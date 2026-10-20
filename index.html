@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Quad Bicycle Tilt Mentalism</title>
+  <title>Bicycle Automatic Face-Down Mentalism</title>
   <style>
     body {
       margin: 0; padding: 0;
@@ -13,9 +13,9 @@
       align-items: center; justify-content: center;
       min-height: 100vh; text-align: center;
       overflow: hidden;
+      user-select: none;
     }
 
-    /* Controls & Setup UI */
     #setup-ui {
       display: flex; flex-direction: column; align-items: center; gap: 15px; z-index: 10;
     }
@@ -26,12 +26,7 @@
       border: none; border-radius: 10px; cursor: pointer;
     }
 
-    #reset-btn {
-      background-color: #333333; color: #aaaaaa;
-      position: absolute; bottom: 30px; display: none; z-index: 20;
-    }
-
-    /* PHASE 1: 2x2 CARD GRID */
+    /* 2x2 CARD GRID */
     .grid-container {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -40,7 +35,7 @@
       max-width: 340px;
     }
 
-    /* Card Styling (Bicycle Style) */
+    /* Bicycle Card Mini Face */
     .card-mini {
       width: 140px; height: 190px;
       background-color: #ffffff; color: #000000;
@@ -49,18 +44,18 @@
       border: 1px solid #dcdcdc;
     }
 
-    /* PHASE 2: FULL REVEAL CARD */
+    /* Full Screen Reveal Card */
     .card-full {
       width: 260px; height: 360px;
       background-color: #ffffff; color: #000000;
       border-radius: 14px; box-shadow: 0 10px 30px rgba(0,0,0,0.8);
       position: relative; box-sizing: border-box; padding: 20px;
-      display: none; /* Hidden until locked */
+      display: none;
     }
 
     .red-suit { color: #d32f2f !important; }
 
-    /* Card Face Elements */
+    /* Pips & Layout */
     .card-pip-center {
       position: absolute; top: 50%; left: 50%;
       transform: translate(-50%, -50%); line-height: 1;
@@ -80,12 +75,6 @@
     .corner.top-left { top: 10px; left: 10px; }
     .corner.bottom-right { bottom: 10px; right: 10px; transform: rotate(180deg); }
 
-    /* Hidden / Blank Screen during Face-Down phase */
-    #wait-screen {
-      display: none;
-      font-size: 1.1rem; color: #444;
-    }
-
     .debug-info {
       position: absolute; bottom: 10px; font-size: 0.75rem; color: #444;
     }
@@ -93,32 +82,28 @@
 </head>
 <body>
 
-  <!-- SETUP PHASE -->
+  <!-- SETUP BUTTON (Invisible after initial tap) -->
   <div id="setup-ui">
     <button class="btn" id="perm-btn" onclick="requestOrientationPermission()">Enable Sensors & Show Cards</button>
   </div>
 
-  <!-- PHASE 1: DISPLAY 4 CARDS TO SPECTATOR -->
+  <!-- PHASE 1: 4 CARDS GRID -->
   <div class="grid-container" id="card-grid" style="display: none;">
-    <!-- Top-Left (Index 0) -->
     <div class="card-mini" id="grid-0">
       <div class="corner top-left"><div class="corner-rank"></div><div class="corner-suit"></div></div>
       <div class="card-pip-center"></div>
       <div class="corner bottom-right"><div class="corner-rank"></div><div class="corner-suit"></div></div>
     </div>
-    <!-- Top-Right (Index 1) -->
     <div class="card-mini" id="grid-1">
       <div class="corner top-left"><div class="corner-rank"></div><div class="corner-suit"></div></div>
       <div class="card-pip-center"></div>
       <div class="corner bottom-right"><div class="corner-rank"></div><div class="corner-suit"></div></div>
     </div>
-    <!-- Bottom-Left (Index 2) -->
     <div class="card-mini" id="grid-2">
       <div class="corner top-left"><div class="corner-rank"></div><div class="corner-suit"></div></div>
       <div class="card-pip-center"></div>
       <div class="corner bottom-right"><div class="corner-rank"></div><div class="corner-suit"></div></div>
     </div>
-    <!-- Bottom-Right (Index 3) -->
     <div class="card-mini" id="grid-3">
       <div class="corner top-left"><div class="corner-rank"></div><div class="corner-suit"></div></div>
       <div class="card-pip-center"></div>
@@ -126,14 +111,8 @@
     </div>
   </div>
 
-  <!-- Start Button below grid -->
-  <button class="btn" id="start-btn" style="display: none; margin-top: 15px;" onclick="armPrediction()">Lock In & Turn Face Down</button>
-
-  <!-- WAITING STATE (While Phone is Face Down) -->
-  <div id="wait-screen">Ready... Place Face Down</div>
-
   <!-- PHASE 2: SINGLE FULL REVEAL CARD -->
-  <div class="card-full" id="card-reveal">
+  <div class="card-full" id="card-reveal" onclick="resetApp()">
     <div class="corner top-left">
       <div class="corner-rank" id="full-rank-tl"></div>
       <div class="corner-suit" id="full-suit-tl"></div>
@@ -145,22 +124,18 @@
     </div>
   </div>
 
-  <button class="btn" id="reset-btn" onclick="resetApp()">Reset Next Trick</button>
   <div class="debug-info" id="debug">Gamma: 0 | Beta: 0</div>
 
   <script>
     const TILT_THRESHOLD = 22;
     let isSensorsActive = false;
-    let isArmed = false;
-    let isLocked = false;
+    let isArmed = false;      // True ONLY after phone has been turned face down
+    let isLocked = false;     // True once the final card is chosen
     let cardPool = [];
 
     const cardGrid = document.getElementById('card-grid');
-    const startBtn = document.getElementById('start-btn');
     const setupUI = document.getElementById('setup-ui');
-    const waitScreen = document.getElementById('wait-screen');
     const cardReveal = document.getElementById('card-reveal');
-    const resetBtn = document.getElementById('reset-btn');
     const debugEl = document.getElementById('debug');
 
     generateRandomCardPool();
@@ -221,37 +196,39 @@
       setupUI.style.display = 'none';
       renderGrid();
       cardGrid.style.display = 'grid';
-      startBtn.style.display = 'block';
-    }
-
-    // Step 2: Magician pretends to lock prediction, hides grid
-    function armPrediction() {
-      cardGrid.style.display = 'none';
-      startBtn.style.display = 'none';
-      waitScreen.style.display = 'block';
-      isArmed = true; // Now listening for physical tilt
     }
 
     function handleOrientation(event) {
-      if (!isSensorsActive || !isArmed || isLocked) return;
+      if (!isSensorsActive || isLocked) return;
 
-      const gamma = Math.round(event.gamma || 0);
-      const beta = Math.round(event.beta || 0);
-      debugEl.innerText = `Gamma: ${gamma}° | Beta: ${beta}°`;
+      const gamma = Math.round(event.gamma || 0); // Roll [-90 to 90]
+      const beta = Math.round(event.beta || 0);   // Pitch [-180 to 180]
 
-      // SPECIFIC MAPPING IMPLEMENTATION:
-      if (gamma < -TILT_THRESHOLD) {
-        // 1. Tilt LEFT first -> Shows Top-Left Card (Grid Index 0)
-        lockSelection(0);
-      } else if (beta > TILT_THRESHOLD) {
-        // 2. Tilt TOP (Up) first -> Shows Top-Right Card (Grid Index 1)
-        lockSelection(1);
-      } else if (beta < -TILT_THRESHOLD) {
-        // 3. Tilt BOTTOM first -> Shows Bottom-Left Card (Grid Index 2)
-        lockSelection(2);
-      } else if (gamma > TILT_THRESHOLD) {
-        // 4. Tilt RIGHT first -> Shows Bottom-Right Card (Grid Index 3)
-        lockSelection(3);
+      debugEl.innerText = `Gamma: ${gamma}° | Beta: ${beta}° | Armed: ${isArmed}`;
+
+      // STEP 1: Detect Face-Down Position (Beta angle close to -180° or 180°)
+      // When the phone goes flat face-down, Beta approaches -180° / 180°.
+      if (!isArmed && Math.abs(beta) > 140) {
+        isArmed = true; // System is now armed silently
+        cardGrid.style.display = 'none'; // Grid disappears instantly while face down
+        return;
+      }
+
+      // STEP 2: Once armed, listen for the first pickup tilt angle
+      if (isArmed) {
+        if (gamma < -TILT_THRESHOLD) {
+          // Tilt LEFT first -> Top-Left Card (Index 0)
+          lockSelection(0);
+        } else if (beta > TILT_THRESHOLD && beta < 100) {
+          // Tilt TOP (Upward) first -> Top-Right Card (Index 1)
+          lockSelection(1);
+        } else if (beta < -TILT_THRESHOLD && beta > -100) {
+          // Tilt BOTTOM (Forward) first -> Bottom-Left Card (Index 2)
+          lockSelection(2);
+        } else if (gamma > TILT_THRESHOLD) {
+          // Tilt RIGHT first -> Bottom-Right Card (Index 3)
+          lockSelection(3);
+        }
       }
     }
 
@@ -259,7 +236,6 @@
       isLocked = true;
       const selectedCard = cardPool[cardIndex];
 
-      // Render the single large card face
       if (selectedCard.suit.color === 'red') cardReveal.classList.add('red-suit');
       else cardReveal.classList.remove('red-suit');
 
@@ -269,22 +245,19 @@
       document.getElementById('full-rank-br').innerText = selectedCard.rank;
       document.getElementById('full-suit-br').innerText = selectedCard.suit.char;
 
-      waitScreen.style.display = 'none';
       cardReveal.style.display = 'block';
-      resetBtn.style.display = 'block';
       debugEl.style.display = 'none';
     }
 
+    // Secret Reset: Tapping anywhere on the final revealed card resets the trick
     function resetApp() {
       generateRandomCardPool();
       isArmed = false;
       isLocked = false;
       cardReveal.style.display = 'none';
-      resetBtn.style.display = 'none';
       debugEl.style.display = 'block';
       renderGrid();
       cardGrid.style.display = 'grid';
-      startBtn.style.display = 'block';
     }
   </script>
 </body>
