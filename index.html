@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tilt Magic Peek</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #121212;
+      color: #ffffff;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      text-align: center;
+    }
+
+    /* iOS Permission Button Style */
+    #perm-btn {
+      padding: 14px 24px;
+      font-size: 16px;
+      font-weight: 600;
+      color: #121212;
+      background-color: #ffffff;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      margin-bottom: 20px;
+    }
+
+    .reveal-card {
+      font-size: 3rem;
+      font-weight: bold;
+      padding: 20px;
+      border-radius: 12px;
+      background: #1e1e1e;
+      box-shadow: 0 8px 16px rgba(0,0,0,0.5);
+      min-width: 200px;
+    }
+
+    .debug-info {
+      position: absolute;
+      bottom: 20px;
+      font-size: 0.85rem;
+      color: #777;
+    }
+  </style>
+</head>
+<body>
+
+  <button id="perm-btn" onclick="requestOrientationPermission()">Enable Tilt Sensors</button>
+
+  <div class="reveal-card" id="display-content">
+    Neutral (Flat)
+  </div>
+
+  <div class="debug-info" id="debug">
+    Gamma: 0 | Beta: 0
+  </div>
+
+  <script>
+    const displayEl = document.getElementById('display-content');
+    const debugEl = document.getElementById('debug');
+
+    // iOS 13+ requires explicit user gesture permission to access device motion/orientation
+    function requestOrientationPermission() {
+      if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+        DeviceOrientationEvent.requestPermission()
+          .then(permissionState => {
+            if (permissionState === 'granted') {
+              window.addEventListener('deviceorientation', handleOrientation);
+              document.getElementById('perm-btn').style.display = 'none';
+            } else {
+              alert('Permission to access device orientation was denied.');
+            }
+          })
+          .catch(console.error);
+      } else {
+        // Non-iOS or older devices do not require explicit permission requests
+        window.addEventListener('deviceorientation', handleOrientation);
+        document.getElementById('perm-btn').style.display = 'none';
+      }
+    }
+
+    function handleOrientation(event) {
+      // Gamma: Left-to-Right tilt [-90 to 90 degrees]
+      // Beta: Front-to-Back tilt [-180 to 180 degrees]
+      const gamma = Math.round(event.gamma || 0);
+      const beta = Math.round(event.beta || 0);
+
+      debugEl.innerText = `Gamma (Tilt L/R): ${gamma}° | Beta (Tilt F/B): ${beta}°`;
+
+      // Define threshold zones for triggering different reveals
+      if (gamma < -25) {
+        // Phone tilted significantly LEFT
+        updateDisplay("Ace of Spades", "#d32f2f");
+      } else if (gamma > 25) {
+        // Phone tilted significantly RIGHT
+        updateDisplay("King of Hearts", "#c2185b");
+      } else if (beta > 50) {
+        // Phone lifted UPWARDS towards performer
+        updateDisplay("Queen of Diamonds", "#7b1fa2");
+      } else if (beta < -20) {
+        // Phone tilted DOWNWARDS / Forward
+        updateDisplay("Jack of Clubs", "#1976d2");
+      } else {
+        // Default Neutral / Flat position
+        updateDisplay("Neutral (Flat)", "#1e1e1e");
+      }
+    }
+
+    function updateDisplay(text, bgColor) {
+      displayEl.innerText = text;
+      displayEl.style.backgroundColor = bgColor;
+    }
+  </script>
+</body>
+</html>
