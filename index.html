@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Tilt Magic Peek</title>
+  <title>Tilt Magic Peek - Locked</title>
   <style>
     body {
       margin: 0;
@@ -19,8 +19,7 @@
       text-align: center;
     }
 
-    /* iOS Permission Button Style */
-    #perm-btn {
+    #perm-btn, #reset-btn {
       padding: 14px 24px;
       font-size: 16px;
       font-weight: 600;
@@ -32,6 +31,12 @@
       margin-bottom: 20px;
     }
 
+    #reset-btn {
+      background-color: #333333;
+      color: #ffffff;
+      display: none; /* Hidden until locked */
+    }
+
     .reveal-card {
       font-size: 3rem;
       font-weight: bold;
@@ -40,6 +45,12 @@
       background: #1e1e1e;
       box-shadow: 0 8px 16px rgba(0,0,0,0.5);
       min-width: 200px;
+    }
+
+    .status-badge {
+      margin-top: 15px;
+      font-size: 0.9rem;
+      color: #888;
     }
 
     .debug-info {
@@ -55,8 +66,14 @@
   <button id="perm-btn" onclick="requestOrientationPermission()">Enable Tilt Sensors</button>
 
   <div class="reveal-card" id="display-content">
-    Neutral (Flat)
+    Neutral (Waiting)
   </div>
+
+  <div class="status-badge" id="status-badge">
+    Status: Listening for first tilt...
+  </div>
+
+  <button id="reset-btn" onclick="resetLock()">Reset for Next Trick</button>
 
   <div class="debug-info" id="debug">
     Gamma: 0 | Beta: 0
@@ -65,8 +82,12 @@
   <script>
     const displayEl = document.getElementById('display-content');
     const debugEl = document.getElementById('debug');
+    const statusEl = document.getElementById('status-badge');
+    const resetBtn = document.getElementById('reset-btn');
 
-    // iOS 13+ requires explicit user gesture permission to access device motion/orientation
+    // State lock flag
+    let isLocked = false;
+
     function requestOrientationPermission() {
       if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
         DeviceOrientationEvent.requestPermission()
@@ -75,47 +96,53 @@
               window.addEventListener('deviceorientation', handleOrientation);
               document.getElementById('perm-btn').style.display = 'none';
             } else {
-              alert('Permission to access device orientation was denied.');
+              alert('Permission denied.');
             }
           })
           .catch(console.error);
       } else {
-        // Non-iOS or older devices do not require explicit permission requests
         window.addEventListener('deviceorientation', handleOrientation);
         document.getElementById('perm-btn').style.display = 'none';
       }
     }
 
     function handleOrientation(event) {
-      // Gamma: Left-to-Right tilt [-90 to 90 degrees]
-      // Beta: Front-to-Back tilt [-180 to 180 degrees]
       const gamma = Math.round(event.gamma || 0);
       const beta = Math.round(event.beta || 0);
 
-      debugEl.innerText = `Gamma (Tilt L/R): ${gamma}° | Beta (Tilt F/B): ${beta}°`;
+      debugEl.innerText = `Gamma (L/R): ${gamma}° | Beta (F/B): ${beta}°`;
 
-      // Define threshold zones for triggering different reveals
+      // IF ALREADY LOCKED, IGNORE ALL FUTURE TILT MOVEMENTS
+      if (isLocked) return;
+
+      // Detect first valid tilt movement
       if (gamma < -25) {
-        // Phone tilted significantly LEFT
-        updateDisplay("Ace of Spades", "#d32f2f");
+        lockSelection("Ace of Spades", "#d32f2f");
       } else if (gamma > 25) {
-        // Phone tilted significantly RIGHT
-        updateDisplay("King of Hearts", "#c2185b");
+        lockSelection("King of Hearts", "#c2185b");
       } else if (beta > 50) {
-        // Phone lifted UPWARDS towards performer
-        updateDisplay("Queen of Diamonds", "#7b1fa2");
+        lockSelection("Queen of Diamonds", "#7b1fa2");
       } else if (beta < -20) {
-        // Phone tilted DOWNWARDS / Forward
-        updateDisplay("Jack of Clubs", "#1976d2");
-      } else {
-        // Default Neutral / Flat position
-        updateDisplay("Neutral (Flat)", "#1e1e1e");
+        lockSelection("Jack of Clubs", "#1976d2");
       }
     }
 
-    function updateDisplay(text, bgColor) {
-      displayEl.innerText = text;
-      displayEl.style.backgroundColor = bgColor;
+    function lockSelection(cardName, color) {
+      isLocked = true; // Set lock flag to true
+      displayEl.innerText = cardName;
+      displayEl.style.backgroundColor = color;
+      statusEl.innerText = "Status: LOCKED (Static Output)";
+      statusEl.style.color = "#4caf50";
+      resetBtn.style.display = "inline-block"; // Show secret reset button
+    }
+
+    function resetLock() {
+      isLocked = false;
+      displayEl.innerText = "Neutral (Waiting)";
+      displayEl.style.backgroundColor = "#1e1e1e";
+      statusEl.innerText = "Status: Listening for first tilt...";
+      statusEl.style.color = "#888";
+      resetBtn.style.display = "none";
     }
   </script>
 </body>
