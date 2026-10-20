@@ -3,189 +3,214 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Tilt-Lock: Quad Bicycle Peek</title>
+  <title>Quad Bicycle Tilt Mentalism</title>
   <style>
-    /* 1. Core Structure */
     body {
       margin: 0; padding: 0;
       background-color: #121212; color: #ffffff;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       display: flex; flex-direction: column;
       align-items: center; justify-content: center;
-      height: 100vh; text-align: center;
-      overflow: hidden; /* Prevent scrolling during tilts */
+      min-height: 100vh; text-align: center;
+      overflow: hidden;
     }
 
-    /* 2. UI Elements (Setup & Reset) */
+    /* Controls & Setup UI */
     #setup-ui {
-      display: flex; flex-direction: column; align-items: center; gap: 15px;
+      display: flex; flex-direction: column; align-items: center; gap: 15px; z-index: 10;
     }
     
-    #perm-btn, #reset-btn {
-      padding: 16px 28px; font-size: 1.1rem; font-weight: 700;
+    .btn {
+      padding: 14px 24px; font-size: 1rem; font-weight: 700;
       color: #121212; background-color: #ffffff;
-      border: none; border-radius: 12px;
-      cursor: pointer;
+      border: none; border-radius: 10px; cursor: pointer;
     }
 
     #reset-btn {
       background-color: #333333; color: #aaaaaa;
-      position: absolute; bottom: 60px;
+      position: absolute; bottom: 30px; display: none; z-index: 20;
+    }
+
+    /* PHASE 1: 2x2 CARD GRID */
+    .grid-container {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      padding: 10px;
+      max-width: 340px;
+    }
+
+    /* Card Styling (Bicycle Style) */
+    .card-mini {
+      width: 140px; height: 190px;
+      background-color: #ffffff; color: #000000;
+      border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+      position: relative; box-sizing: border-box; padding: 10px;
+      border: 1px solid #dcdcdc;
+    }
+
+    /* PHASE 2: FULL REVEAL CARD */
+    .card-full {
+      width: 260px; height: 360px;
+      background-color: #ffffff; color: #000000;
+      border-radius: 14px; box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+      position: relative; box-sizing: border-box; padding: 20px;
       display: none; /* Hidden until locked */
     }
 
-    /* 3. Bicycle-Inspired Card CSS */
-    .card {
-      width: 250px; height: 350px; /* Classic aspect ratio */
-      background-color: #ffffff; /* Bicycle White */
-      color: #000000; /* Default color (Spades/Clubs) */
-      border-radius: 14px; /* Professional corner radius */
-      box-shadow: 0 10px 25px rgba(0,0,0,0.6);
-      position: relative; /* Context for children */
-      display: none; /* Hidden until a tilt is locked */
-      box-sizing: border-box;
-      padding: 20px;
-      border: 1px solid #dcdcdc; /* Subtle border classic for card paper */
-    }
+    .red-suit { color: #d32f2f !important; }
 
-    /* Define Red for Hearts/Diamonds */
-    .card.red-suit { color: #d32f2f; }
-
-    /* The Large Center Pips */
+    /* Card Face Elements */
     .card-pip-center {
-      position: absolute;
-      top: 50%; left: 50%;
-      transform: translate(-50%, -50%);
-      font-size: 140px; /* Large center suit icon */
-      line-height: 1;
+      position: absolute; top: 50%; left: 50%;
+      transform: translate(-50%, -50%); line-height: 1;
     }
+    .card-mini .card-pip-center { font-size: 65px; }
+    .card-full .card-pip-center { font-size: 130px; }
 
-    /* The Corners (Rank + Suit) */
     .corner {
-      position: absolute;
-      display: flex; flex-direction: column; align-items: center;
-      font-weight: bold; line-height: 1.1;
+      position: absolute; display: flex; flex-direction: column; align-items: center;
+      font-weight: bold; line-height: 1;
     }
-    .corner-rank { font-size: 40px; }
-    .corner-suit { font-size: 28px; }
+    .card-mini .corner-rank { font-size: 22px; }
+    .card-mini .corner-suit { font-size: 16px; }
+    .card-full .corner-rank { font-size: 40px; }
+    .card-full .corner-suit { font-size: 28px; }
 
-    /* Top Left Corner */
-    .corner.top-left { top: 15px; left: 15px; }
-    
-    /* Bottom Right Corner (Bicycle uses symmetrical reversed layout) */
-    .corner.bottom-right {
-      bottom: 15px; right: 15px;
-      transform: rotate(180deg);
-    }
+    .corner.top-left { top: 10px; left: 10px; }
+    .corner.bottom-right { bottom: 10px; right: 10px; transform: rotate(180deg); }
 
-    /* Instructions shown to spectator */
-    #spectator-instruction {
-      font-size: 1.2rem; color: #888;
-      max-width: 80%;
-      margin-top: 20px;
+    /* Hidden / Blank Screen during Face-Down phase */
+    #wait-screen {
+      display: none;
+      font-size: 1.1rem; color: #444;
     }
 
-    /* 4. Debug Data */
     .debug-info {
-      position: absolute; bottom: 15px;
-      font-size: 0.8rem; color: #555;
+      position: absolute; bottom: 10px; font-size: 0.75rem; color: #444;
     }
   </style>
 </head>
 <body>
 
-  <!-- SETUP PHASE (Shown until permission granted) -->
+  <!-- SETUP PHASE -->
   <div id="setup-ui">
-    <button id="perm-btn" onclick="requestOrientationPermission()">Enable System Sensors</button>
-    <div id="spectator-instruction">
-      "Please focus on your mental selection, then pass the device face down."
+    <button class="btn" id="perm-btn" onclick="requestOrientationPermission()">Enable Sensors & Show Cards</button>
+  </div>
+
+  <!-- PHASE 1: DISPLAY 4 CARDS TO SPECTATOR -->
+  <div class="grid-container" id="card-grid" style="display: none;">
+    <!-- Top-Left (Index 0) -->
+    <div class="card-mini" id="grid-0">
+      <div class="corner top-left"><div class="corner-rank"></div><div class="corner-suit"></div></div>
+      <div class="card-pip-center"></div>
+      <div class="corner bottom-right"><div class="corner-rank"></div><div class="corner-suit"></div></div>
+    </div>
+    <!-- Top-Right (Index 1) -->
+    <div class="card-mini" id="grid-1">
+      <div class="corner top-left"><div class="corner-rank"></div><div class="corner-suit"></div></div>
+      <div class="card-pip-center"></div>
+      <div class="corner bottom-right"><div class="corner-rank"></div><div class="corner-suit"></div></div>
+    </div>
+    <!-- Bottom-Left (Index 2) -->
+    <div class="card-mini" id="grid-2">
+      <div class="corner top-left"><div class="corner-rank"></div><div class="corner-suit"></div></div>
+      <div class="card-pip-center"></div>
+      <div class="corner bottom-right"><div class="corner-rank"></div><div class="corner-suit"></div></div>
+    </div>
+    <!-- Bottom-Right (Index 3) -->
+    <div class="card-mini" id="grid-3">
+      <div class="corner top-left"><div class="corner-rank"></div><div class="corner-suit"></div></div>
+      <div class="card-pip-center"></div>
+      <div class="corner bottom-right"><div class="corner-rank"></div><div class="corner-suit"></div></div>
     </div>
   </div>
 
-  <!-- THE REVEAL CARD (Rendered via JS, hidden until locked) -->
-  <div class="card" id="card-reveal">
-    <!-- Top Left Corner -->
+  <!-- Start Button below grid -->
+  <button class="btn" id="start-btn" style="display: none; margin-top: 15px;" onclick="armPrediction()">Lock In & Turn Face Down</button>
+
+  <!-- WAITING STATE (While Phone is Face Down) -->
+  <div id="wait-screen">Ready... Place Face Down</div>
+
+  <!-- PHASE 2: SINGLE FULL REVEAL CARD -->
+  <div class="card-full" id="card-reveal">
     <div class="corner top-left">
-      <div class="corner-rank" id="card-rank-tl">A</div>
-      <div class="corner-suit" id="card-suit-tl">♠</div>
+      <div class="corner-rank" id="full-rank-tl"></div>
+      <div class="corner-suit" id="full-suit-tl"></div>
     </div>
-    
-    <!-- Large Center Pip -->
-    <div class="card-pip-center" id="card-pip-center">♠</div>
-    
-    <!-- Bottom Right Corner (Reversed) -->
+    <div class="card-pip-center" id="full-pip-center"></div>
     <div class="corner bottom-right">
-      <div class="corner-rank" id="card-rank-br">A</div>
-      <div class="corner-suit" id="card-suit-br">♠</div>
+      <div class="corner-rank" id="full-rank-br"></div>
+      <div class="corner-suit" id="full-suit-br"></div>
     </div>
   </div>
 
-  <button id="reset-btn" onclick="resetApp()">Reset for Next Spectator</button>
-
-  <!-- Sensor Data Debug -->
+  <button class="btn" id="reset-btn" onclick="resetApp()">Reset Next Trick</button>
   <div class="debug-info" id="debug">Gamma: 0 | Beta: 0</div>
 
   <script>
-    // --- Configuration ---
-    const TILT_THRESHOLD = 25; // Degrees required to trigger
-
-    // --- State Management ---
+    const TILT_THRESHOLD = 22;
     let isSensorsActive = false;
+    let isArmed = false;
     let isLocked = false;
-    let cardPool = []; // Will store 4 random cards
+    let cardPool = [];
 
-    // --- DOM Elements ---
+    const cardGrid = document.getElementById('card-grid');
+    const startBtn = document.getElementById('start-btn');
     const setupUI = document.getElementById('setup-ui');
+    const waitScreen = document.getElementById('wait-screen');
     const cardReveal = document.getElementById('card-reveal');
-    const debugEl = document.getElementById('debug');
     const resetBtn = document.getElementById('reset-btn');
+    const debugEl = document.getElementById('debug');
 
-    // --- Initialization ---
-    generateRandomCardPool(); // Create the 4 cards immediately on page load
+    generateRandomCardPool();
 
-    // 1. Generate 4 Random Distinct Playing Cards
     function generateRandomCardPool() {
       const suits = [
-        { char: '♠', name: 'spades', color: 'black' },
-        { char: '♥', name: 'hearts', color: 'red' },
-        { char: '♦', name: 'diamonds', color: 'red' },
-        { char: '♣', name: 'clubs', color: 'black' }
+        { char: '♠', color: 'black' },
+        { char: '♥', color: 'red' },
+        { char: '♦', color: 'red' },
+        { char: '♣', color: 'black' }
       ];
-      // Note: 'T' is placeholder for 10
-      const ranks = ['A', '2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K'];
+      const ranks = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
 
-      // Clear previous pool
       cardPool = [];
       let usedCards = new Set();
 
       while (cardPool.length < 4) {
-        const randomSuit = suits[Math.floor(Math.random() * suits.length)];
-        const randomRank = ranks[Math.floor(Math.random() * ranks.length)];
-        const cardKey = `${randomRank}${randomSuit.char}`;
+        const suit = suits[Math.floor(Math.random() * suits.length)];
+        const rank = ranks[Math.floor(Math.random() * ranks.length)];
+        const key = `${rank}${suit.char}`;
 
-        if (!usedCards.has(cardKey)) {
-          usedCards.add(cardKey);
-          cardPool.push({
-            rank: randomRank === 'T' ? '10' : randomRank,
-            suit: randomSuit
-          });
+        if (!usedCards.has(key)) {
+          usedCards.add(key);
+          cardPool.push({ rank, suit });
         }
       }
-      console.log("Card Pool Generated:", cardPool);
     }
 
-    // 2. iOS Permission Handling
+    function renderGrid() {
+      cardPool.forEach((card, idx) => {
+        const el = document.getElementById(`grid-${idx}`);
+        if (card.suit.color === 'red') el.classList.add('red-suit');
+        else el.classList.remove('red-suit');
+
+        el.querySelector('.top-left .corner-rank').innerText = card.rank;
+        el.querySelector('.top-left .corner-suit').innerText = card.suit.char;
+        el.querySelector('.card-pip-center').innerText = card.suit.char;
+        el.querySelector('.bottom-right .corner-rank').innerText = card.rank;
+        el.querySelector('.bottom-right .corner-suit').innerText = card.suit.char;
+      });
+    }
+
     function requestOrientationPermission() {
       if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
         DeviceOrientationEvent.requestPermission()
-          .then(permissionState => {
-            if (permissionState === 'granted') {
-              activateSensors();
-            } else { alert('Permission denied by user.'); }
-          })
-          .catch(console.error);
+          .then(state => {
+            if (state === 'granted') activateSensors();
+            else alert('Permission denied');
+          });
       } else {
-        // Non-iOS or older devices
         activateSensors();
       }
     }
@@ -193,82 +218,73 @@
     function activateSensors() {
       isSensorsActive = true;
       window.addEventListener('deviceorientation', handleOrientation);
-      // Hide setup, show "waiting" state visually (hidden card)
       setupUI.style.display = 'none';
+      renderGrid();
+      cardGrid.style.display = 'grid';
+      startBtn.style.display = 'block';
     }
 
-    // 3. Sensor Handling & *Your Specific Mapping Logic*
+    // Step 2: Magician pretends to lock prediction, hides grid
+    function armPrediction() {
+      cardGrid.style.display = 'none';
+      startBtn.style.display = 'none';
+      waitScreen.style.display = 'block';
+      isArmed = true; // Now listening for physical tilt
+    }
+
     function handleOrientation(event) {
-      if (!isSensorsActive || isLocked) return;
+      if (!isSensorsActive || !isArmed || isLocked) return;
 
-      const gamma = Math.round(event.gamma || 0); // L/R Roll [-90 to 90]
-      const beta = Math.round(event.beta || 0);   // F/B Pitch [-180 to 180]
+      const gamma = Math.round(event.gamma || 0);
+      const beta = Math.round(event.beta || 0);
+      debugEl.innerText = `Gamma: ${gamma}° | Beta: ${beta}°`;
 
-      debugEl.innerText = `Gamma (L/R): ${gamma}° | Beta (Top/Bottom): ${beta}°`;
-
-      // Threshold check
-      if (Math.abs(gamma) < TILT_THRESHOLD && Math.abs(beta) < TILT_THRESHOLD) return;
-
-      // SPECIFIC USER-REQUESTED MAPPING LOGIC:
-      // We prioritize Gamma (Side) over Beta (Top/Bottom) if both are tilted.
-
+      // SPECIFIC MAPPING IMPLEMENTATION:
       if (gamma < -TILT_THRESHOLD) {
-        // 1. "top-left should come when I tilt LEFT first" (Gamma negative)
-        lockSelection(0); // Index 0 of the random pool
+        // 1. Tilt LEFT first -> Shows Top-Left Card (Grid Index 0)
+        lockSelection(0);
       } else if (beta > TILT_THRESHOLD) {
-        // 2. "top-right should come when I tilt TOP first" (Beta positive/lifting up)
-        lockSelection(1); // Index 1
+        // 2. Tilt TOP (Up) first -> Shows Top-Right Card (Grid Index 1)
+        lockSelection(1);
       } else if (beta < -TILT_THRESHOLD) {
-        // 3. "bottom-left should come when I tilt FROM BOTTOM first" (Beta negative/tilting forward)
-        lockSelection(2); // Index 2
+        // 3. Tilt BOTTOM first -> Shows Bottom-Left Card (Grid Index 2)
+        lockSelection(2);
       } else if (gamma > TILT_THRESHOLD) {
-        // 4. "bottom-right if I tilt FROM RIGHT?" (Gamma positive)
-        lockSelection(3); // Index 3
+        // 4. Tilt RIGHT first -> Shows Bottom-Right Card (Grid Index 3)
+        lockSelection(3);
       }
     }
 
-    // 4. Locking the Display
     function lockSelection(cardIndex) {
-      isLocked = true; // Arm the lock guard
-      
-      const selectedInvisibleCard = cardPool[cardIndex];
-      renderCardFace(selectedInvisibleCard);
+      isLocked = true;
+      const selectedCard = cardPool[cardIndex];
 
-      cardReveal.style.display = 'block'; // Show the rendering
-      debugEl.style.display = 'none'; // Hide debug
-      resetBtn.style.display = 'block'; // Reveal reset option
+      // Render the single large card face
+      if (selectedCard.suit.color === 'red') cardReveal.classList.add('red-suit');
+      else cardReveal.classList.remove('red-suit');
+
+      document.getElementById('full-rank-tl').innerText = selectedCard.rank;
+      document.getElementById('full-suit-tl').innerText = selectedCard.suit.char;
+      document.getElementById('full-pip-center').innerText = selectedCard.suit.char;
+      document.getElementById('full-rank-br').innerText = selectedCard.rank;
+      document.getElementById('full-suit-br').innerText = selectedCard.suit.char;
+
+      waitScreen.style.display = 'none';
+      cardReveal.style.display = 'block';
+      resetBtn.style.display = 'block';
+      debugEl.style.display = 'none';
     }
 
-    // 5. Drawing the Bicycle Suit Layout via DOM
-    function renderCardFace(cardData) {
-      const { rank, suit } = cardData;
-
-      // Handle suit color (Bicycle Red/Black)
-      if (suit.color === 'red') {
-        cardReveal.classList.add('red-suit');
-      } else {
-        cardReveal.classList.remove('red-suit');
-      }
-
-      // Populate UTF-8 characters and ranks
-      document.getElementById('card-rank-tl').innerText = rank;
-      document.getElementById('card-suit-tl').innerText = suit.char;
-      document.getElementById('card-pip-center').innerText = suit.char;
-      document.getElementById('card-rank-br').innerText = rank;
-      document.getElementById('card-suit-br').innerText = suit.char;
-    }
-
-    // 6. Complete System Reset
     function resetApp() {
-      // 1. Generate a *new* set of 4 random cards
       generateRandomCardPool();
-      
-      // 2. Reset visual state
+      isArmed = false;
       isLocked = false;
       cardReveal.style.display = 'none';
-      setupUI.style.display = 'flex';
       resetBtn.style.display = 'none';
       debugEl.style.display = 'block';
+      renderGrid();
+      cardGrid.style.display = 'grid';
+      startBtn.style.display = 'block';
     }
   </script>
 </body>
