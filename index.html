@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Bicycle Automatic Face-Down Mentalism</title>
+  <title>Bicycle Automatic Mentalism</title>
   <style>
     body {
       margin: 0; padding: 0;
@@ -82,7 +82,7 @@
 </head>
 <body>
 
-  <!-- SETUP BUTTON (Invisible after initial tap) -->
+  <!-- SETUP BUTTON -->
   <div id="setup-ui">
     <button class="btn" id="perm-btn" onclick="requestOrientationPermission()">Enable Sensors & Show Cards</button>
   </div>
@@ -124,13 +124,17 @@
     </div>
   </div>
 
-  <div class="debug-info" id="debug">Gamma: 0 | Beta: 0</div>
+  <div class="debug-info" id="debug">Gamma: 0 | Beta: 0 | Timer: Idle</div>
 
   <script>
     const TILT_THRESHOLD = 22;
+    const REQUIRED_FACE_DOWN_TIME = 15000; // 15 seconds in milliseconds
+
     let isSensorsActive = false;
-    let isArmed = false;      // True ONLY after phone has been turned face down
-    let isLocked = false;     // True once the final card is chosen
+    let isArmed = false;            // True only after remaining face-down for 15s
+    let isLocked = false;           // True once the final card selection is triggered
+    let faceDownTimer = null;
+    let faceDownStartTime = null;
     let cardPool = [];
 
     const cardGrid = document.getElementById('card-grid');
@@ -204,18 +208,39 @@
       const gamma = Math.round(event.gamma || 0); // Roll [-90 to 90]
       const beta = Math.round(event.beta || 0);   // Pitch [-180 to 180]
 
-      debugEl.innerText = `Gamma: ${gamma}° | Beta: ${beta}° | Armed: ${isArmed}`;
+      // Strict definition of being completely upside down / flat face down
+      const isCompletelyFaceDown = Math.abs(beta) > 160;
 
-      // STEP 1: Detect Face-Down Position (Beta angle close to -180° or 180°)
-      // When the phone goes flat face-down, Beta approaches -180° / 180°.
-      if (!isArmed && Math.abs(beta) > 140) {
-        isArmed = true; // System is now armed silently
-        cardGrid.style.display = 'none'; // Grid disappears instantly while face down
-        return;
+      // STEP 1: Manage the 15-second mandatory face-down timer
+      if (isCompletelyFaceDown && !isArmed) {
+        cardGrid.style.display = 'none'; // Instantly hide grid when placed face down
+
+        if (!faceDownTimer) {
+          faceDownStartTime = Date.now();
+          faceDownTimer = setTimeout(() => {
+            isArmed = true; // System is now successfully armed after 15 seconds
+            
+            // Subtle vibration feedback if supported
+            if (navigator.vibrate) {
+              navigator.vibrate(50);
+            }
+          }, REQUIRED_FACE_DOWN_TIME);
+        }
+      } else if (!isCompletelyFaceDown && !isArmed) {
+        // If the phone is lifted BEFORE 15 seconds pass, cancel timer and abort arming
+        if (faceDownTimer) {
+          clearTimeout(faceDownTimer);
+          faceDownTimer = null;
+          cardGrid.style.display = 'grid'; // Restore grid so performance isn't ruined
+        }
       }
 
-      // STEP 2: Once armed, listen for the first pickup tilt angle
-      if (isArmed) {
+      // Update Debug Info
+      const elapsed = faceDownStartTime ? Math.min(15, Math.floor((Date.now() - faceDownStartTime) / 1000)) : 0;
+      debugEl.innerText = `Gamma: ${gamma}° | Beta: ${beta}° | FaceDown: ${elapsed}s | Armed: ${isArmed}`;
+
+      // STEP 2: Only process physical tilt IF armed after 15 seconds
+      if (isArmed && !isCompletelyFaceDown) {
         if (gamma < -TILT_THRESHOLD) {
           // Tilt LEFT first -> Top-Left Card (Index 0)
           lockSelection(0);
@@ -249,9 +274,11 @@
       debugEl.style.display = 'none';
     }
 
-    // Secret Reset: Tapping anywhere on the final revealed card resets the trick
     function resetApp() {
       generateRandomCardPool();
+      if (faceDownTimer) clearTimeout(faceDownTimer);
+      faceDownTimer = null;
+      faceDownStartTime = null;
       isArmed = false;
       isLocked = false;
       cardReveal.style.display = 'none';
